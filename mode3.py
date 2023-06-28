@@ -1,11 +1,10 @@
 import csv
-
 import pandas as pd
 from plotnine import *
 from utils import *
 
 
-# get a csv file that contains the shadow region information, the input are annotation files of mature miRNAs
+# get a csv file that contains the shadow region information, the input is the annotation file of mature miRNAs
 def get_shadow_interval(file):
     with open(file, 'r') as g_f:
         with open('miRNA_data.csv', 'w') as w:
@@ -49,7 +48,7 @@ def get_reads_number(file, bed_dic):
 
                 if g_line_list[2] == 'miRNA_primary_transcript':
                     gff_dic = {}
-                    l1 = ['\t']
+                    l1 = ['\t']  # title
                     l2 = []
                     # p = re.compile('Name=(ath-MIR[0-9]*[a-z]?)')
                     p = re.compile('Name=(.*);?')
@@ -136,7 +135,7 @@ def line_plotting(name_of_mirna):
             annotate(geom_rect, xmin=region2[0], xmax=region2[1], ymin=0, ymax=float('inf'), alpha=0.5) +  # new line
             annotate(geom_vline, xintercept=region2, alpha=0) +
             labs(x='relative position of bp', y='the number of reads') +
-            scale_x_discrete(breaks=[str(x) for x in range(0, len(X), 5)]) +
+            scale_x_discrete(breaks=[str(x) for x in range(0, len(X), 5)]) +  # set the interval of x-axis
             theme(axis_text_x=element_text(size=8, family="Monospace", color="black", angle=90),
                   axis_title=element_text(size=12))
 

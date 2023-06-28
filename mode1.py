@@ -88,14 +88,12 @@ def get_ctrd_heatmap(file_name):
     col_labels = list(data.columns)
     df = pd.DataFrame(data_scale.T, index=col_labels, columns=row_labels)
     sns.clustermap(df.T, row_cluster=False, col_cluster=False, cmap="OrRd", center=0, yticklabels='')
-    # Spectral coolwarm
-    # plt.xlim(-48, 2)
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
     plt.savefig(file_name.strip('.csv') + "_heatmap.pdf")
 
 
-# get the cv file of ctrd
+# get the csv file of ctrd, which contains the reads of every site and the TSI value
 def get_csv_file(file_names, gff_filename, gene_name_file):
     with open(file_names, 'r') as f:
         gene_name_dict = get_gene_name_dict(gene_name_file)
@@ -143,7 +141,7 @@ def get_csv_file(file_names, gff_filename, gene_name_file):
             get_ctrd_heatmap(new_file_name)
 
 
-# Read the information of *.bed file and create a dict
+# Read the information of *.bed file and create a dict for plotting
 def pattern_3(file_names, gff_file):
     with open(file_names, 'r') as f:
 
@@ -271,6 +269,7 @@ def transcript_location_to_chr_location(transcript_location, strand, cds_list):
             return chr_location
 
 
+# plot the reads of every codon
 def plot_reads_count(codon_reads_dict=None, file_name=None):
     X = []
     Y = []
@@ -296,6 +295,7 @@ def plot_reads_count(codon_reads_dict=None, file_name=None):
     p.save(file_name.strip("Aligned.sortedByCoord.out.bed") + '_reads_numbers' + ".pdf")
 
 
+# plot the counts number of every codon
 def plot_counts_count(codon_counts_dict=None, file_name=None):
     X = []
     Y = []
@@ -348,7 +348,12 @@ def plot_norm_count(codon_reads_dict=None, codon_counts_dict=None, file_name=Non
 
 
 def step_4_analysis(file_names, gff_file_name, genome_file):
-    cmd = f"gffread {gff_file_name} -g {genome_file} -x cds.fa"
+    with open(gff_file_name) as f_in:
+        with open(f"{gff_file_name[0:-3]}.rename.fa", "w") as f_out:
+            for line in f_in:
+                line = line.replace(">", ">Chr")
+                f_out.writelines(line)
+    cmd = f"gffread {gff_file_name[0:-3]}.rename.fa -g {genome_file} -x cds.fa"
     os.system(cmd)
     # -y protein.fa
 
@@ -401,7 +406,6 @@ def step_4_analysis(file_names, gff_file_name, genome_file):
                         bed_key_3 = "%s_%s_%s" % (chr, int(chr_location - 2), strand)
 
                     reads = bed_dic.get(bed_key_1, 0) + bed_dic.get(bed_key_2, 0) + bed_dic.get(bed_key_3, 0)
-                    # print(reads)
                     reads = min(50, reads)
 
                     if codon not in codon_reads_dict:

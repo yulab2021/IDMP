@@ -6,6 +6,7 @@ from mode4 import *
 from mode5 import *
 
 if __name__ == "__main__":
+    # Adding Command Line Parameters
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="List file includes the names of bed file")
     parser.add_argument('--mirna_name', help='The name of the miRNA that you want to analysis')
@@ -30,8 +31,8 @@ if __name__ == "__main__":
         step_4_analysis(args.input, args.gff, args.genome)
         print("The analysis was completed and the results have been deposited in the current working directory!")
         exit()
-    elif args.mode == '2':
-        print('mode2:Exon junction complex analysis')
+    elif args.mode == '5':
+        print('mode5:Exon junction complex analysis')
         with open(args.input, 'r') as f:
             for file in f:
                 file = file.strip()
@@ -60,8 +61,8 @@ if __name__ == "__main__":
         reads_plotting(args.mirna_name, args.input, args.gff)
         print("The analysis was completed and the results have been deposited in the current working directory!")
         exit()
-    elif args.mode == '5':
-        print('mode5:5’UTR uORF identification')
+    elif args.mode == '2':
+        print('mode2:5’UTR uORF identification')
         gene_name_dic = get_gene_name_dict(args.gene_name)
         uorf_analysis(args.input, args.gff, gene_name_dic, args.genome)
         with open(args.input, 'r') as f:

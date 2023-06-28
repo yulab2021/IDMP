@@ -36,7 +36,7 @@ def get_cds_dict(file, bed_dic):
                 # if re.search('Parent=(AT[0-5]G[0-9]+\.1)', row_list[8]):
                 # p = re.compile('Parent=(AT[0-5]G[0-9]+\.1)')
                 if re.search('Parent=(.*\.1),?', row_list[-1]):
-                    p = re.compile('Parent=(.*\.1),?')
+                    p = re.compile('Parent=([^,]*\.1),?')
                     ID = p.findall(row_list[-1])[0]
                     if ID not in id_list:
                         try:
@@ -61,7 +61,7 @@ def get_cds_dict(file, bed_dic):
                         flag = 0
                         d = 0
 
-                    if flag:
+                    if flag:  # Marked the start of a new gene
                         i = -50
                         d = 50
 
@@ -80,7 +80,7 @@ def get_cds_dict(file, bed_dic):
                         start = int(row_list[4])
                         end = int(row_list[3])
 
-                        for tmp in range(-start - 50, -end + 1):
+                        for tmp in range(-start - d, -end + 1):
                             k = Chr + '_' + str(-tmp) + '_' + strand
                             cds_dict[ID + '_' + str(i)] = bed_dic.get(k, 0)
                             i += 1
@@ -152,6 +152,7 @@ def mode4_analysis(file_list, gff_file_name, result_file):
                         writer.writerow(line_list)
 
 
+# get a dict needed to obtain drawings
 def reads_plotting(mirna_name, bed_files, gff_file):
     site_dic = {}
     bed_dic = get_bed_dicts(bed_files)
@@ -167,6 +168,7 @@ def reads_plotting(mirna_name, bed_files, gff_file):
                 site_dic = {}
 
 
+# For a gene, draw a line plot of the number of reads spanning 100-nt around it
 def plotting(data: dict, name_of_gene):
     col1 = []
     col2 = []

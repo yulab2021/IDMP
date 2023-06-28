@@ -101,17 +101,15 @@ A set of tables and barplots show the pattern_3 of each samples
 
 A set of barplots show the reads/counts of each codon for each sample
 
-## ##0x03 Exon junction complex pausing 
+## ##0x03 uORF identification
 
 ```
-python ./Degradome_analysis/Degradome_analysis.py --mode 2 --input input.list --gff gff_file --genome genome_file --gene_name gene_name_annotation_file --sample_info the_treatment_and_condition_of_samples &
+python ./Degradome_analysis/Degradome_analysis.py --mode 2 --input input.list --gff gff_file --gene_name gene_name_annotation_file --genome genome_file &
 ```
 
 ##### Output:
 
-A lineplot shows the the reads number in the range -50~0 of stop codon of each sample
-
-A set of heatmaps
+A set of heatmaps and tables show the distribution of reads
 
 ## ##0x04 5’P reads distribution along pre-miRNAs
 
@@ -145,15 +143,17 @@ A file shows whether the cleavage site is significantly enriched over flanking 5
 
 A set of lineplots show the distribution of reads for the targets of the given miRNA
 
-## ##0x06 uORF identification
+## ##0x06 Exon junction complex pausing 
 
 ```
-python ./Degradome_analysis/Degradome_analysis.py --mode 5 --input input.list --gff gff_file --gene_name gene_name_annotation_file --genome genome_file &
+python ./Degradome_analysis/Degradome_analysis.py --mode 5 --input input.list --gff gff_file --genome genome_file --gene_name gene_name_annotation_file --sample_info the_treatment_and_condition_of_samples &
 ```
 
 ##### Output:
 
-A set of heatmaps and tables show the distribution of reads
+A lineplot shows the the reads number in the range -50~0 of stop codon of each sample
+
+A set of heatmaps
 
 ## ##0x07 Venn plot
 
