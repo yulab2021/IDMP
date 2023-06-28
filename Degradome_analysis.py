@@ -31,8 +31,8 @@ if __name__ == "__main__":
         step_4_analysis(args.input, args.gff, args.genome)
         print("The analysis was completed and the results have been deposited in the current working directory!")
         exit()
-    elif args.mode == '5':
-        print('mode5:Exon junction complex analysis')
+    elif args.mode == '3':
+        print('mode3:Exon junction complex analysis')
         with open(args.input, 'r') as f:
             for file in f:
                 file = file.strip()
@@ -43,21 +43,21 @@ if __name__ == "__main__":
         ejc_plotting("new_EJC_upstream_50.csv")
         print("The analysis was completed and the results have been deposited in the current working directory!")
         exit()
-    elif args.mode == '3':
-        print('mode3:5’P reads distribution along pre-miRNA analysis')
-        mode3_analysis(args.gff3_file, args.mirna_name, args.input)
+    elif args.mode == '4':
+        print('mode4:5’P reads distribution along pre-miRNA analysis')
+        mode4_analysis(args.gff3_file, args.mirna_name, args.input)
         print("The analysis was completed and the results have been deposited in the current working directory!")
         exit()
-    elif args.mode == '4-1':
-        print('mode4-1:Identification of miRNA cleavage sites')
+    elif args.mode == '5-1':
+        print('mode5-1:Identification of miRNA cleavage sites')
         rna_id = args.rna_id.lower()
         extract_cds(args.genome, args.gff)
         extract_mirna(args.mirna_fa, args.rna_id)
         print('Please download cds.fa and mirna.fa and submit to the provided website,and get the analysis result!')
         exit()
-    elif args.mode == '4-2':
-        print('mode4-2:Identification of miRNA cleavage sites')
-        mode4_analysis(args.input, args.gff, args.ps_file)
+    elif args.mode == '5-2':
+        print('mode5-2:Identification of miRNA cleavage sites')
+        mode5_analysis(args.input, args.gff, args.ps_file)
         reads_plotting(args.mirna_name, args.input, args.gff)
         print("The analysis was completed and the results have been deposited in the current working directory!")
         exit()

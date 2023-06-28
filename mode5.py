@@ -1,242 +1,193 @@
 import csv
+import math
 import pandas as pd
-import seaborn as sns
 import numpy as np
-from utils import *
-import matplotlib.pyplot as plt
 from plotnine import *
-from sklearn import preprocessing
+from utils import *
 
 
-# get a csv file that contains EJC reads information and TSI
-def get_ejc_csv_file(file_name, bed_dic, gff_file, gene_name_file):
-    gene_name_dict = get_gene_name_dict(gene_name_file)
-    with open(gff_file, 'r') as g_f:
-        with open(file_name.strip("Aligned.sortedByCoord.out.bed") + "_EJC_upstream_50.csv", 'w') as w:
+# get the sequence of miRNA, the file 'mirna.fa' can be used to Submit to the site
+# the mature_file is the mature RNA annotation files, which a can be downloaded from www.mirbase.org
+def extract_mirna(mature_file, rna_id):
+    with open(mature_file, 'r') as fa:
+        with open("mirna.fa", 'w') as mi:
+            flag = False
+            for line in fa:
+                if flag:
+                    mi.writelines(line)
+                    flag = False
+                r_id = rna_id + '-miR'
+                if r_id in line:
+                    mi.writelines(line)
+                    flag = True
 
-            writer = csv.writer(w)
-            l1 = list()
-            l1.append('gene id')
-            for i in range(-50, 1):
-                l1.append(str(i))
-            l1.append('TSI')
-            l1.append("gene name")
-            writer.writerow(l1)
 
+# get a special cds_dict that contains the reads of upstream and downstream 50 nt
+def get_cds_dict(file, bed_dic):
+    cds_dict = {}
+    with open(file, 'r') as g_f:
+        id_list = []
+        strand = ''
+        for row in g_f:
+            if "#" in row:
+                continue
+            row_list = row.split('\t')
+            if row_list[2] == 'CDS':
+                # if re.search('Parent=(AT[0-5]G[0-9]+\.1)', row_list[8]):
+                # p = re.compile('Parent=(AT[0-5]G[0-9]+\.1)')
+                if re.search('Parent=(.*\.1),?', row_list[-1]):
+                    p = re.compile('Parent=([^,]*\.1),?')
+                    ID = p.findall(row_list[-1])[0]
+                    if ID not in id_list:
+                        try:
+                            pre_id = id_list[-1]
+                        except IndexError:
+                            pre_id = ID
+                        if strand:
+                            if strand == "+":
+                                for tmp in range(end + 1, end + 51):
+                                    k = Chr + '_' + str(tmp) + '_' + strand
+                                    cds_dict[pre_id + '_' + str(i)] = bed_dic.get(k, 0)
+                                    i += 1
+                            else:
+                                for tmp in range(-end + 1, -end + 51):
+                                    k = Chr + '_' + str(-tmp) + '_' + strand
+                                    cds_dict[pre_id + '_' + str(i)] = bed_dic.get(k, 0)
+                                    i += 1
+
+                        id_list.append(ID)
+                        flag = 1
+                    else:
+                        flag = 0
+                        d = 0
+
+                    if flag:  # Marked the start of a new gene
+                        i = -50
+                        d = 50
+
+                    strand = row_list[6]
+                    Chr = row_list[0].strip('Chr')
+                    if strand == "+":
+                        start = int(row_list[3])
+                        end = int(row_list[4])
+
+                        for tmp in range(start - d, end + 1):
+                            k = Chr + '_' + str(tmp) + '_' + strand
+                            cds_dict[ID + '_' + str(i)] = bed_dic.get(k, 0)
+                            i += 1
+
+                    else:
+                        start = int(row_list[4])
+                        end = int(row_list[3])
+
+                        for tmp in range(-start - d, -end + 1):
+                            k = Chr + '_' + str(-tmp) + '_' + strand
+                            cds_dict[ID + '_' + str(i)] = bed_dic.get(k, 0)
+                            i += 1
+
+    return cds_dict
+
+
+# the result_file is the file downloaded from the website. We process the file and add some new information
+def mode5_analysis(file_list, gff_file_name, result_file):
+    bed_dic = get_bed_dicts(file_list)
+    cds_dic = get_cds_dict(gff_file_name, bed_dic)
+    with open(result_file, 'r') as t_file:
+        with open("mirna_5p_reads.csv", 'w') as out:
+            writer = csv.writer(out)
             id_list = []
-            num_of_repeat = 0
-
-            for line in g_f:
+            short_id_list = []
+            for line in t_file:
                 if '#' in line:
                     continue
-                line = line.strip()
-                g_line_list = line.split('\t')
-                if g_line_list[2] == 'exon':
-                    # if re.search('Parent=(AT[0-9]G[0-9])', g_line_list[8]):
-                    if re.search('Parent=(.*),?', g_line_list[8]):
-                        p = re.compile('Parent=([^,]*\.1),?')
-                        ID_list = p.findall(g_line_list[8])
-                        if ID_list:
-                            ID = ID_list[0]
-                        else:
+                if "miRNA" in line:
+                    title_list = line.split('\t')
+                    title_list.extend(["miRNA cleavage site signal", "mean flanking signal"
+                                          , "miRNA cleavage efficiency"])
+                    writer.writerow(title_list)
+
+                # p = re.compile('AT[0-5]G[0-9]+\.1')
+                # if p.findall(line):
+
+                line_list = line.split('\t')
+                if line_list[11] == "Cleavage":
+
+                    start = int(line_list[6])
+                    end = int(line_list[7])
+                    ID = line_list[1].split('.')[0] + '.' + line_list[1].split('.')[1]
+                    p = re.compile('\.1{1}$')
+                    if not p.search(ID):
+                        continue
+                    p1 = re.compile('.*-miR[1-9]+')
+                    long_id = line_list[0]
+                    short_id = p1.findall(line_list[0])[0]
+
+                    if long_id not in id_list and short_id in short_id_list:
+                        continue
+                    if long_id not in id_list and short_id not in short_id_list:
+                        id_list.append(long_id)
+                        short_id_list.append(short_id)
+
+                    Site = end - 10
+                    # Sum = 0
+                    data_l = []
+                    for tmp in range(Site - 50, Site + 51):
+                        if tmp == Site:
                             continue
-                        if ID not in id_list:
-                            id_list.append(ID)
-                            num_of_repeat = 1
-                            ID += '_' + str(1)
                         else:
-                            ID += '_' + str(num_of_repeat + 1)
-                            num_of_repeat += 1
-                        l2 = list()
-                        l2.append(ID)
-                        total = 0
-                        if g_line_list[6] == '+':
-                            ejc = int(g_line_list[4].strip())
-                            for tmp in range(ejc - 50, ejc + 1):
-                                k = g_line_list[0].strip('Chr') + '_' + str(tmp) + '_' + g_line_list[6]
-                                l2.append(bed_dic.get(k, 0))
-                                total += bed_dic.get(k, 0)
-                        else:
-                            ejc = int(g_line_list[3].strip())
-                            ejc = -ejc
-                            for tmp in range(ejc - 50, ejc + 1):
-                                k = g_line_list[0].strip('Chr') + '_' + str(-tmp) + '_' + g_line_list[6]
-                                l2.append(bed_dic.get(k, 0))
-                                total += bed_dic.get(k, 0)
-
-                        ave = int(l2[23]) + int(l2[24]) + int(l2[25])
-                        ave /= 3
-                        # ave /= (mysum(l2[1:]) / len(l2[1:]))
-                        if total == 0:
-                            ave = 0
-                        else:
-                            ave /= total / len(l2[1:])
-                        if 2 < ave < 50:
-                            l2.append(ave)
-                            if max(l2[1:23]) < 1000 and max(l2[26:-1]) < 1000:
-                                l2.append(gene_name_dict.get(ID, ID))
-                                writer.writerow(l2)
+                            data_l.append(cds_dic[ID + '_' + str(tmp)])
+                            # Sum += cds_dic[ID + '_' + str(tmp)]
+                    site_reads = cds_dic[ID + '_' + str(Site)]
+                    if site_reads < 5:
+                        continue
+                    medium = np.median([i for i in data_l if i != 0])
+                    # Sum = Sum / float(100)
+                    try:
+                        efficiency = math.log2(site_reads / medium)
+                    except Exception:
+                        efficiency = 0
+                    if efficiency >= 1:
+                        line_list[-1] = line_list[-1].strip()
+                        line_list.extend([site_reads, medium, efficiency])
+                        writer.writerow(line_list)
 
 
-# the file_list contains all the bed files, the sra_file is an
-# annotate document contains the temp and tissue information of the samples
-def get_file_for_plotting(file_list, gff_file, sra_file):
-    with open("EJC_upstream_50.csv", 'w') as w:
-        writer = csv.writer(w)
-        l1 = list()
-        l1.append('\t')
-        for i in range(-50, 1):
-            l1.append(str(i))
-        l1.append('Treatment')
-        l1.append('Condition')
-        writer.writerow(l1)
-
-    xlsx_list = []
-    with open(sra_file, 'r') as f:
+# get a dict needed to obtain drawings
+def reads_plotting(mirna_name, bed_files, gff_file):
+    site_dic = {}
+    bed_dic = get_bed_dicts(bed_files)
+    gff_dic, gff_dic1 = get_gff_dict_cds(gff_file, bed_dic)
+    with open("mirna_5p_reads.csv", 'r') as f:
         for line in f:
-            if "Run" in line:
-                continue
-            temp = line.split(',')[-2]
-            tissue = line.split(',')[-1]
-            xlsx_list.append(temp)
-            xlsx_list.append(tissue)
-
-    num_of_row = 0  # Used when adding temperature and tissue to the list
-    with open(file_list, 'r') as fl:
-        with open("EJC_upstream_50.csv", 'a') as w:
-            writer = csv.writer(w)
-            for file_name in fl:
-                file_name = file_name.strip()
-                l2 = [0] * 52
-                l2[0] = file_name.strip('Aligned.sortedByCoord.out.bed')
-                bed_dic = get_bed_dict(file_name)
-                """with open(file_name, 'r') as b_f:
-                    bed_dic = {}
-                    for line in b_f:
-                        line = line.strip()
-                        b_line_list = line.split('\t')
-                        if re.search('[1-9]', b_line_list[0]):
-                            if b_line_list[5] == '+':
-                                pos = int(b_line_list[1].strip()) + 1
-                                x = b_line_list[0] + '_' + str(pos) + '_' + b_line_list[5]
-
-                            else:
-                                pos = int(b_line_list[2].strip())
-                                x = b_line_list[0] + '_' + str(pos) + '_' + b_line_list[5]
-                            if x not in bed_dic.keys():
-                                bed_dic[x] = 0
-                            bed_dic[x] += 1"""
-
-                with open(gff_file, 'r') as g_f:
-
-                    for line in g_f:
-                        if '#' in line:
-                            continue
-                        line = line.strip()
-                        g_line_list = line.split('\t')
-                        if g_line_list[2] == 'exon':
-                            # if re.search('Parent=AT[0-5]G[0-9]+\.1', g_line_list[8]):
-                            if re.search('Parent=(.+\.1),?', g_line_list[8]):
-                                if g_line_list[6] == '+':
-                                    ejc = int(g_line_list[4].strip())
-
-                                    for tmp in range(ejc - 50, ejc + 1):
-                                        k = g_line_list[0].strip('Chr') + '_' + str(tmp) + '_' + g_line_list[6]
-                                        l2[tmp + 50 - ejc + 1] += bed_dic.get(k, 0)
-
-                                else:
-                                    ejc = int(g_line_list[3].strip())
-                                    ejc = -ejc
-
-                                    for tmp in range(ejc - 50, ejc + 1):
-                                        k = g_line_list[0].strip('Chr') + '_' + str(-tmp) + '_' + g_line_list[6]
-
-                                        l2[tmp + 50 - ejc + 1] += bed_dic.get(k, 0)
-
-                sum_row = sum(l2[1:52:])
-                for i in range(51):
-                    l2[i + 1] = l2[i + 1] / sum_row
-                    l2[i + 1] *= 100
-
-                l2.append(xlsx_list[num_of_row])
-                l2.append(xlsx_list[num_of_row + 1].strip('\n'))
-                num_of_row += 2
-
-                writer.writerow(l2)
-
-
-# file_name: a csv file used to plot
-def ejc_plotting(file_name):
-    data_info = pd.read_csv(file_name)
-    legend_list = []
-    repeat_list = []
-    with open(file_name, 'r') as df:
-        for line in df:
-            if str(-50) in line:
-                continue
             line_list = line.split(',')
-            tag = line_list[-2] + '_' + line_list[-1].strip("\"").strip('\n')
-            if tag not in repeat_list:
-                repeat_list.append(tag)
-                repeat = 1
-            else:
-                repeat += 1
+            if line_list[0].strip("\"").strip() == mirna_name:
+                ID = line_list[1].split(".")[0] + ".1"
+                for i in range(-50, 51):
+                    site_dic[i] = gff_dic.get((ID + "_" + str(int(line_list[6]) + i)), 0)
+                plotting(site_dic, ID)
+                site_dic = {}
 
-            legend_list.append(tag + '_' + str(repeat))
 
-    data_info.insert(data_info.shape[1], 'Sample', legend_list)
-
-    data_info = data_info.T
-
-    # wide table to long table
-
-    X = []
-    Y = []
-    sample = []
-
-    index_list = list(data_info.index)
-    k = 1
-    for i in range(1, 51):
-        loc = np.array(data_info.iloc[i])
-        for j in range(len(loc)):
-            Y.append(loc[j])
-            X.append(index_list[k])
-            sample.append(legend_list[j])
-        k += 1
-
-    data_info_long = pd.DataFrame({"x": X, "y": Y, "sample": sample})
+# For a gene, draw a line plot of the number of reads spanning 100-nt around it
+def plotting(data: dict, name_of_gene):
+    col1 = []
+    col2 = []
+    for k in data:
+        col1.append(k)
+        col2.append(data[k])
+    data_info_long = pd.DataFrame({"x": col1, "y": col2, "label": name_of_gene})
     data_info_long['x'] = pd.Categorical(data_info_long.x, categories=pd.unique(data_info_long.x))
 
     p = (
             ggplot(data_info_long) +
-            geom_line(aes(x='x', y='y', group="sample", color="sample"), show_legend=True) +  # group
-            labs(x='Distance from exon 3\' end (nt)', y='Relative frequency of 5\'P end occurrences (%)') +
-
-            theme(legend_position=(0.25, 0.9), legend_text=element_text(size=6), legend_key_size=12,
-                  legend_background=element_rect(alpha=0), figure_size=(12, 8), axis_text=element_text(size=8),
-                  axis_title=element_text(size=12))
-
+            geom_line(aes(x='x', y='y', group='label', color='label')) +
+            labs(x='Number relative to miRNA start site(nt)', y='Read count') +
+            scale_x_discrete(breaks=[5 * i for i in range(-10, 11)]) +
+            theme(legend_position=(0.25, 0.9), legend_box='vertical', legend_text=element_text(size=6),
+                  legend_key_size=12, legend_margin=1.5, legend_background=element_rect(alpha=0),
+                  figure_size=(12, 8), axis_text=element_text(size=8), axis_title=element_text(size=12))
     )
+    p.save(name_of_gene + "_reads_flanking_100.pdf")
 
-    p.save(file_name.strip('.csv') + '_' + ".pdf")
 
 
-# input the csv file that contains TSI
-def get_ejc_heatmap(file_name):
-    data = pd.read_csv(file_name.strip("Aligned.sortedByCoord.out.bed") + "_EJC_upstream_50.csv", index_col=0)
-    data = data.sort_values(by='TSI', ascending=False)
-    data.pop("TSI")
-    data.pop("gene name")
-    scaler = preprocessing.StandardScaler().fit(data.T)  # Rows were normalized
-    data_T_scale = scaler.transform(data.T)
-    data_scale = data_T_scale.transpose()
-    plt.figure()
-    row_labels = list(data.index)
-    col_labels = list(data.columns)
-    df = pd.DataFrame(data_scale.T, index=col_labels, columns=row_labels)
-    sns.clustermap(df.T, row_cluster=False, col_cluster=False, cmap="OrRd", center=0, yticklabels='')
-    # plt.xlim(-50, 0)
-    # Spectral coolwarm
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.savefig(file_name.strip("Aligned.sortedByCoord.out.bed") + "_ejc_heatmap.pdf")

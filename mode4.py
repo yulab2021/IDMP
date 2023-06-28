@@ -1,190 +1,211 @@
 import csv
-import math
 import pandas as pd
-import numpy as np
 from plotnine import *
 from utils import *
 
 
-# get the sequence of miRNA, the file 'mirna.fa' can be used to Submit to the site
-# the mature_file is the mature RNA annotation files, which a can be downloaded from www.mirbase.org
-def extract_mirna(mature_file, rna_id):
-    with open(mature_file, 'r') as fa:
-        with open("mirna.fa", 'w') as mi:
-            flag = False
-            for line in fa:
-                if flag:
-                    mi.writelines(line)
-                    flag = False
-                r_id = rna_id + '-miR'
-                if r_id in line:
-                    mi.writelines(line)
-                    flag = True
-
-
-# get a special cds_dict that contains the reads of upstream and downstream 50 nt
-def get_cds_dict(file, bed_dic):
-    cds_dict = {}
+# get a csv file that contains the shadow region information, the input is the annotation file of mature miRNAs
+def get_shadow_interval(file):
     with open(file, 'r') as g_f:
-        id_list = []
-        strand = ''
-        for row in g_f:
-            if "#" in row:
-                continue
-            row_list = row.split('\t')
-            if row_list[2] == 'CDS':
-                # if re.search('Parent=(AT[0-5]G[0-9]+\.1)', row_list[8]):
-                # p = re.compile('Parent=(AT[0-5]G[0-9]+\.1)')
-                if re.search('Parent=(.*\.1),?', row_list[-1]):
-                    p = re.compile('Parent=([^,]*\.1),?')
-                    ID = p.findall(row_list[-1])[0]
-                    if ID not in id_list:
-                        try:
-                            pre_id = id_list[-1]
-                        except IndexError:
-                            pre_id = ID
-                        if strand:
-                            if strand == "+":
-                                for tmp in range(end + 1, end + 51):
-                                    k = Chr + '_' + str(tmp) + '_' + strand
-                                    cds_dict[pre_id + '_' + str(i)] = bed_dic.get(k, 0)
-                                    i += 1
-                            else:
-                                for tmp in range(-end + 1, -end + 51):
-                                    k = Chr + '_' + str(-tmp) + '_' + strand
-                                    cds_dict[pre_id + '_' + str(i)] = bed_dic.get(k, 0)
-                                    i += 1
-
-                        id_list.append(ID)
-                        flag = 1
-                    else:
-                        flag = 0
-                        d = 0
-
-                    if flag:  # Marked the start of a new gene
-                        i = -50
-                        d = 50
-
-                    strand = row_list[6]
-                    Chr = row_list[0].strip('Chr')
-                    if strand == "+":
-                        start = int(row_list[3])
-                        end = int(row_list[4])
-
-                        for tmp in range(start - d, end + 1):
-                            k = Chr + '_' + str(tmp) + '_' + strand
-                            cds_dict[ID + '_' + str(i)] = bed_dic.get(k, 0)
-                            i += 1
-
-                    else:
-                        start = int(row_list[4])
-                        end = int(row_list[3])
-
-                        for tmp in range(-start - d, -end + 1):
-                            k = Chr + '_' + str(-tmp) + '_' + strand
-                            cds_dict[ID + '_' + str(i)] = bed_dic.get(k, 0)
-                            i += 1
-
-    return cds_dict
-
-
-# the result_file is the file downloaded from the website. We process the file and add some new information
-def mode4_analysis(file_list, gff_file_name, result_file):
-    bed_dic = get_bed_dicts(file_list)
-    cds_dic = get_cds_dict(gff_file_name, bed_dic)
-    with open(result_file, 'r') as t_file:
-        with open("mirna_5p_reads.csv", 'w') as out:
-            writer = csv.writer(out)
-            id_list = []
-            short_id_list = []
-            for line in t_file:
+        with open('miRNA_data.csv', 'w') as w:
+            writer = csv.writer(w)
+            for line in g_f:
                 if '#' in line:
                     continue
-                if "miRNA" in line:
-                    title_list = line.split('\t')
-                    title_list.extend(["miRNA cleavage site signal", "mean flanking signal"
-                                          , "miRNA cleavage efficiency"])
-                    writer.writerow(title_list)
+                g_line_list = line.split('\t')
+                if g_line_list[2] == 'miRNA_primary_transcript':
+                    # p = re.compile('Name=(ath-MIR[0-9]*[a-z]?)')
+                    p = re.compile('Name=(.*);?')
+                    ID = p.findall(g_line_list[8])[0]
+                    if g_line_list[6] == '+':
+                        start = int(g_line_list[3].strip())
+                    else:
+                        start = int(g_line_list[4].strip())
 
-                # p = re.compile('AT[0-5]G[0-9]+\.1')
-                # if p.findall(line):
+                if g_line_list[2] == 'miRNA':
+                    if g_line_list[6] == '+':
+                        start1 = int(g_line_list[3].strip()) - start + 1
+                        end1 = int(g_line_list[4].strip()) - start + 1
 
-                line_list = line.split('\t')
-                if line_list[11] == "Cleavage":
-
-                    start = int(line_list[6])
-                    end = int(line_list[7])
-                    ID = line_list[1].split('.')[0] + '.' + line_list[1].split('.')[1]
-                    p = re.compile('\.1{1}$')
-                    if not p.search(ID):
-                        continue
-                    p1 = re.compile('.*-miR[1-9]+')
-                    long_id = line_list[0]
-                    short_id = p1.findall(line_list[0])[0]
-
-                    if long_id not in id_list and short_id in short_id_list:
-                        continue
-                    if long_id not in id_list and short_id not in short_id_list:
-                        id_list.append(long_id)
-                        short_id_list.append(short_id)
-
-                    Site = end - 10
-                    # Sum = 0
-                    data_l = []
-                    for tmp in range(Site - 50, Site + 51):
-                        if tmp == Site:
-                            continue
-                        else:
-                            data_l.append(cds_dic[ID + '_' + str(tmp)])
-                            # Sum += cds_dic[ID + '_' + str(tmp)]
-                    site_reads = cds_dic[ID + '_' + str(Site)]
-                    if site_reads < 5:
-                        continue
-                    medium = np.median([i for i in data_l if i != 0])
-                    # Sum = Sum / float(100)
-                    try:
-                        efficiency = math.log2(site_reads / medium)
-                    except Exception:
-                        efficiency = 0
-                    if efficiency >= 1:
-                        line_list[-1] = line_list[-1].strip()
-                        line_list.extend([site_reads, medium, efficiency])
-                        writer.writerow(line_list)
+                    else:
+                        start1 = start - int(g_line_list[4].strip()) + 1
+                        end1 = start - int(g_line_list[3].strip()) + 1
+                    l1 = [ID, start1, end1]
+                    writer.writerow(l1)
 
 
-# get a dict needed to obtain drawings
-def reads_plotting(mirna_name, bed_files, gff_file):
-    site_dic = {}
-    bed_dic = get_bed_dicts(bed_files)
-    gff_dic, gff_dic1 = get_gff_dict_cds(gff_file, bed_dic)
-    with open("mirna_5p_reads.csv", 'r') as f:
-        for line in f:
-            line_list = line.split(',')
-            if line_list[0].strip("\"").strip() == mirna_name:
-                ID = line_list[1].split(".")[0] + ".1"
-                for i in range(-50, 51):
-                    site_dic[i] = gff_dic.get((ID + "_" + str(int(line_list[6]) + i)), 0)
-                plotting(site_dic, ID)
-                site_dic = {}
+# get a csv file that contains the reads number of, input the gff3 file
+def get_reads_number(file, bed_dic):
+    with open(file, 'r') as g_f:
+        with open('miRNA_reads.csv', 'w') as mi:
+
+            writer = csv.writer(mi)
+
+            for line in g_f:
+                if '#' in line:
+                    continue
+                g_line_list = line.split('\t')
+
+                if g_line_list[2] == 'miRNA_primary_transcript':
+                    gff_dic = {}
+                    l1 = ['\t']  # title
+                    l2 = []
+                    # p = re.compile('Name=(ath-MIR[0-9]*[a-z]?)')
+                    p = re.compile('Name=(.*);?')
+                    p1 = re.compile(r"chr", re.I)
+                    s = p1.search(g_line_list[0]).group()
+                    ID = p.findall(g_line_list[8])[0]
+                    l2.append(ID)
+
+                    if g_line_list[6] == '+':
+                        start = int(g_line_list[3].strip())
+                        end = int(g_line_list[4].strip())
+
+                        for tmp in range(start, end + 1):
+                            k = g_line_list[0].strip(s) + '_' + str(tmp) + '_' + g_line_list[6]
+                            gff_dic[str(tmp)] = bed_dic.get(k, 0)
+                            l1.append(str(tmp - start + 1))
+                            l2.append(gff_dic[str(tmp)])
+
+                    else:
+                        start = int(g_line_list[4].strip())
+                        end = int(g_line_list[3].strip())
+
+                        for tmp in range(-start, -end + 1):
+                            k = g_line_list[0].strip(s) + '_' + str(-tmp) + '_' + g_line_list[6]
+                            gff_dic[str(-tmp)] = bed_dic.get(k, 0)
+                            l1.append(str(tmp + start + 1))
+                            l2.append(gff_dic[str(-tmp)])
+                    writer.writerow(l1)
+                    writer.writerow(l2)
 
 
-# For a gene, draw a line plot of the number of reads spanning 100-nt around it
-def plotting(data: dict, name_of_gene):
-    col1 = []
-    col2 = []
-    for k in data:
-        col1.append(k)
-        col2.append(data[k])
-    data_info_long = pd.DataFrame({"x": col1, "y": col2, "label": name_of_gene})
+# get the plot that contains the mirna sites and a shaded section showing the miRNA region
+def line_plotting(name_of_mirna):
+    X = []
+    Y = []
+    with open('miRNA_reads.csv', 'r') as mi:
+        for row in mi:
+            if '\t' in row:
+                index_list = row.split(',')
+            else:
+                if name_of_mirna in row:
+                    X = index_list[1::]
+                    Y = row.split(',')[1::]
+                    break
+    if len(X) == 0:
+        print('There is a wrong in the name of miRNA!')
+        exit()
+
+    start2 = end2 = start1 = end1 = 0
+    with open('miRNA_data.csv', 'r') as da:
+        repeat = 1
+        for line in da:
+            line = line.strip()
+            if name_of_mirna in line:
+                da_list = line.split(',')
+                if repeat == 3:
+                    break
+                if repeat == 2:
+                    start2 = int(da_list[1])
+                    end2 = int(da_list[2])
+                    repeat += 1
+                if repeat == 1:
+                    start1 = int(da_list[1])
+                    end1 = int(da_list[2])
+                    repeat += 1
+
+    X[-1] = X[-1].strip()
+    Y[-1] = Y[-1].strip()
+    label = []
+    for i in range(0, len(Y)):
+        Y[i] = int(Y[i])
+        label.append(name_of_mirna)
+    data_info_long = pd.DataFrame({'x': X, 'y': Y, 'label': label})
     data_info_long['x'] = pd.Categorical(data_info_long.x, categories=pd.unique(data_info_long.x))
 
+    region1 = (start1, end1)
+    region2 = (start2, end2)
     p = (
-            ggplot(data_info_long) +
+            ggplot(data_info_long, aes('x')) +
             geom_line(aes(x='x', y='y', group='label', color='label')) +
-            labs(x='Number relative to miRNA start site(nt)', y='Read count') +
-            scale_x_discrete(breaks=[5 * i for i in range(-10, 11)]) +
-            theme(legend_position=(0.25, 0.9), legend_box='vertical', legend_text=element_text(size=6),
-                  legend_key_size=12, legend_margin=1.5, legend_background=element_rect(alpha=0),
-                  figure_size=(12, 8), axis_text=element_text(size=8), axis_title=element_text(size=12))
+            geom_density() +
+            annotate(geom_rect, xmin=region1[0], xmax=region1[1], ymin=0, ymax=float('inf'), alpha=0.5) +
+            annotate(geom_vline, xintercept=region1, alpha=0) +
+            annotate(geom_rect, xmin=region2[0], xmax=region2[1], ymin=0, ymax=float('inf'), alpha=0.5) +  # new line
+            annotate(geom_vline, xintercept=region2, alpha=0) +
+            labs(x='relative position of bp', y='the number of reads') +
+            scale_x_discrete(breaks=[str(x) for x in range(0, len(X), 5)]) +  # set the interval of x-axis
+            theme(axis_text_x=element_text(size=8, family="Monospace", color="black", angle=90),
+                  axis_title=element_text(size=12))
+
     )
-    p.save(name_of_gene + "_reads_flanking_100.pdf")
+    p.save(name_of_mirna + "_analysis_result.pdf")
+
+
+# print the miRNAs that have an enrichment at 5p or 3p+1
+def enrichment_signals(bed_dic, gff_file):
+    with open('cleavage_site.csv', 'w') as cl:
+        with open(gff_file, 'r') as g_f:
+            writer = csv.writer(cl)
+            writer.writerow(['Name', '5p', '3p+1', '*5p', '*3p+1'])
+            l = []
+            for line in g_f:
+                if '#' in line:
+                    continue
+                g_line_list = line.split('\t')
+                p1 = re.compile(r"chr", re.I)
+                s = p1.search(g_line_list[0]).group()
+
+                if g_line_list[2] == 'miRNA_primary_transcript':
+                    # p = re.compile('Name=(ath-MIR[0-9]*[a-z]?)')
+                    p = re.compile('Name=(.*);?')
+                    ID = p.findall(g_line_list[8])[0]
+                    if l[1:]:
+                        if max(l[1:]) != 0:
+                            writer.writerow(l)
+                    l = [ID]
+                    Sum = 0
+                    length = 0
+
+                    if g_line_list[6] == '+':
+                        start = int(g_line_list[3].strip())
+                        end = int(g_line_list[4].strip())
+
+                        for tmp in range(start, end + 1):
+                            k = g_line_list[0].strip(s) + '_' + str(tmp) + '_' + g_line_list[6]
+                            Sum += bed_dic.get(k, 0)
+                            length += 1
+
+                    else:
+                        start = int(g_line_list[4].strip())
+                        end = int(g_line_list[3].strip())
+
+                        for tmp in range(-start, -end + 1):
+                            k = g_line_list[0].strip(s) + '_' + str(-tmp) + '_' + g_line_list[6]
+                            Sum += bed_dic.get(k, 0)
+                            length += 1
+                if g_line_list[2] == 'miRNA':
+
+                    if g_line_list[6] == '+':
+                        start = g_line_list[3].strip()
+                        end = int(g_line_list[4].strip()) + 1
+                    else:
+                        start = g_line_list[4].strip()
+                        end = int(g_line_list[3].strip()) - 1
+                    k1 = g_line_list[0].strip(s) + '_' + start + '_' + g_line_list[6]
+                    k2 = g_line_list[0].strip(s) + '_' + str(end) + '_' + g_line_list[6]
+                    if Sum == 0:
+                        continue
+                    s_5p = bed_dic.get(k1, 0) / (Sum / length)
+                    s_3p = bed_dic.get(k2, 0) / (Sum / length)
+                    l.append(s_5p)
+                    l.append(s_3p)
+
+
+def mode4_analysis(gff3_file, name_of_mirna, bed_list):
+    bed_dic = get_bed_dicts(bed_list)
+    get_shadow_interval(gff3_file)
+    get_reads_number(gff3_file, bed_dic)
+    line_plotting(name_of_mirna)
+    enrichment_signals(bed_dic, gff3_file)
