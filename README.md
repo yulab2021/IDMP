@@ -111,42 +111,10 @@ python ./Degradome_analysis/Degradome_analysis.py --mode 2 --input input.list --
 
 A set of heatmaps and tables show the distribution of reads
 
-## ##0x04 5’P reads distribution along pre-miRNAs
+## ##0x04 Exon junction complex pausing 
 
 ```
-python ./Degradome_analysis/Degradome_analysis.py --mode 3 --gff gff_file --input input.list --gff3_file pre-miRNA_and_mature_miRNA_annotation_file --mirna_name name_of_mirna  &
-```
-
-##### Output:
-
-A lineplot shows the distribution of reads for a given precursor is plotted, and the relative position of the mature miRNA is given
-
-A file shows the miRNAs have enrichment signals
-
-## ##0x05 Identification of miRNA cleavage sites
-
-First of all, you can use the following code to obtain the documents that need to be submitted to the website
-
-```
-python ./Degradome_analysis/Degradome_analysis.py --mode 4-1 --gff gff_file --genome genome_file --mirna_fa mature_miRNA_files --rna_id three_letter_abbreviations &
-```
-
-Then, you can download mirna.fa and cds.fa from the current working directory and submit them to the website https://www.zhaolab.org/psRNATarget/, then download the analysis result to do the next step.
-
-```
-python ./Degradome_analysis/Degradome_analysis.py --mode 4-2 --gff gff_file --input input.list --ps_file output_file --mirna_name name_of_mirna &
-```
-
-##### Output:
-
-A file shows whether the cleavage site is significantly enriched over flanking 50nt.
-
-A set of lineplots show the distribution of reads for the targets of the given miRNA
-
-## ##0x06 Exon junction complex pausing 
-
-```
-python ./Degradome_analysis/Degradome_analysis.py --mode 5 --input input.list --gff gff_file --genome genome_file --gene_name gene_name_annotation_file --sample_info the_treatment_and_condition_of_samples &
+python ./Degradome_analysis/Degradome_analysis.py --mode 3 --input input.list --gff gff_file --genome genome_file --gene_name gene_name_annotation_file --sample_info the_treatment_and_condition_of_samples &
 ```
 
 ##### Output:
@@ -155,9 +123,41 @@ A lineplot shows the the reads number in the range -50~0 of stop codon of each s
 
 A set of heatmaps
 
+## ##0x05 5’P reads distribution along pre-miRNAs
+
+```
+python ./Degradome_analysis/Degradome_analysis.py --mode 4 --gff gff_file --input input.list --gff3_file pre-miRNA_and_mature_miRNA_annotation_file --mirna_name name_of_mirna  &
+```
+
+##### Output:
+
+A lineplot shows the distribution of reads for a given precursor is plotted, and the relative position of the mature miRNA is given
+
+A file shows the miRNAs have enrichment signals
+
+## ##0x06 Identification of miRNA cleavage sites
+
+First of all, you can use the following code to obtain the documents that need to be submitted to the website
+
+```
+python ./Degradome_analysis/Degradome_analysis.py --mode 5-1 --gff gff_file --genome genome_file --mirna_fa mature_miRNA_files --rna_id three_letter_abbreviations &
+```
+
+Then, you can download mirna.fa and cds.fa from the current working directory and submit them to the website https://www.zhaolab.org/psRNATarget/, then download the analysis result to do the next step.
+
+```
+python ./Degradome_analysis/Degradome_analysis.py --mode 5-2 --gff gff_file --input input.list --ps_file output_file --mirna_name name_of_mirna &
+```
+
+##### Output:
+
+A file shows whether the cleavage site is significantly enriched over flanking 50nt.
+
+A set of lineplots show the distribution of reads for the targets of the given miRNA
+
 ## ##0x07 Venn plot
 
-Under the premise that you have run mode1, 2, 5, calling this script produces a Venn diagram showing the number of intersections that occur for genes with significant results in the three analysis modes
+Under the premise that you have run mode1, 2, 3, calling this script produces a Venn diagram showing the number of intersections that occur for genes with significant results in the three analysis modes
 
 ```
 python ./Degradome_analysis/venn_plotting.py
