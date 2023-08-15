@@ -1,4 +1,4 @@
-# Degradome analysis
+![image](https://github.com/yulab2021/IDMP/assets/133012957/004cc112-7f18-446b-83d6-99610b3f7f32)# Degradome analysis
 
 ## 0x00 Environment configuration
 
@@ -22,7 +22,13 @@ The following modules are needed to run
 
 Before using our package, you may need to preprocess the file. Finally we need the bed file to continue the following analysis. If you already have the bed files, you can skip these steps.
 
-We take Arabidopsis as an example below.
+We take Arabidopsis degradome data (SRP117737) as an example below.
+
+To conduct the analysis, it's necessary to download both the Arabidopsis genome file in FASTA format and its corresponding annotation file in GFF3 format.
+
+Please review the GFF3 file using the following criteria:
+(1) Confirm that the chromosome ID matches the ID in the genome FASTA file.
+(2) Ensure that the annotation in column 3 includes the "five_prime_UTR" feature, which is essential for uORF analysis.
 
 #### Transfer sra file to fastq file
 
@@ -34,7 +40,7 @@ done
 ```
 
 #### Remove 3-prime connector
-
+## Verify the 3' adapter sequence to be used as input for the '-a' parameter.
 ```
 for file in *fastq
 do
@@ -51,6 +57,7 @@ python ./Degradome_analysis/filter.py
 ```
 
 #### Download Arabidopsis genome and build the star index
+STAR --runMode genomeGenerate --genomeDir Ath.STAR.index --genomeFastaFiles TAIR10_genome.fa --runThreadN 20
 
 #### Map the reads to the genome
 
