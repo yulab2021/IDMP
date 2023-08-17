@@ -40,7 +40,8 @@ done
 ```
 
 #### Remove 3-prime connector
-## Verify the 3' adapter sequence to be used as input for the '-a' parameter.
+Note: verify the 3' adapter sequence to be used as input for the '-a' parameter.
+
 ```
 for file in *fastq
 do
@@ -50,15 +51,14 @@ done
 
 #### Filter the sequence whose length <18 nt
 
-we provide a script to do this step
-
 ```
 python ./Degradome_analysis/filter.py
 ```
 
 #### Download Arabidopsis genome and build the star index
+```
 STAR --runMode genomeGenerate --genomeDir Ath.STAR.index --genomeFastaFiles TAIR10_genome.fa --runThreadN 20
-
+```
 #### Map the reads to the genome
 
 ```
