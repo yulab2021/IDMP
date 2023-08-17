@@ -1,6 +1,6 @@
-![image](https://github.com/yulab2021/IDMP/assets/133012957/004cc112-7f18-446b-83d6-99610b3f7f32)# Degradome analysis
+## Integrated Degradome Mining Pipeline
 
-## 0x00 Environment configuration
+#### 0x00 Environment configuration
 
 ####
 
