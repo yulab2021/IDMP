@@ -44,7 +44,7 @@ if __name__ == "__main__":
         print("The analysis was completed and the results have been deposited in the current working directory!")
         exit()
     elif args.mode == '4':
-        print('mode4:5’P reads distribution along pre-miRNA analysis')
+        print('mode4:5\'P reads distribution along pre-miRNA analysis')
         mode4_analysis(args.gff3_file, args.mirna_name, args.input)
         print("The analysis was completed and the results have been deposited in the current working directory!")
         exit()
@@ -62,7 +62,7 @@ if __name__ == "__main__":
         print("The analysis was completed and the results have been deposited in the current working directory!")
         exit()
     elif args.mode == '2':
-        print('mode2:5’UTR uORF identification')
+        print('mode2:5\'UTR uORF identification')
         gene_name_dic = get_gene_name_dict(args.gene_name)
         uorf_analysis(args.input, args.gff, gene_name_dic, args.genome)
         with open(args.input, 'r') as f:
